@@ -153,12 +153,26 @@ jobs:
           }
           $secretsDir = "tools/release/secrets"
           New-Item -ItemType Directory -Force -Path $secretsDir | Out-Null
+          # Private key is keyed with the store password; build a PKCS#12 copy
+          # whose key alias is "operit2" so Gradle can read it directly.
+          $keytool = Join-Path $env:JAVA_HOME "bin/keytool.exe"
+          $source = Join-Path $env:RUNNER_TEMP "eta-release.jks"
           $keystore = Join-Path $secretsDir "operit2-release.keystore"
-          [System.IO.File]::WriteAllBytes($keystore, [System.Convert]::FromBase64String($env:ANDROID_RELEASE_KEYSTORE_BASE64))
+          [System.IO.File]::WriteAllBytes($source, [System.Convert]::FromBase64String($env:ANDROID_RELEASE_KEYSTORE_BASE64))
+          & $keytool -importkeystore -noprompt `
+            -srckeystore $source -srcstoretype JKS -srcstorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
+            -srcalias $env:ANDROID_RELEASE_KEY_ALIAS -srckeypass $env:ANDROID_RELEASE_STORE_PASSWORD `
+            -destkeystore $keystore -deststoretype PKCS12 -deststorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
+            -destalias operit2 -destkeypass $env:ANDROID_RELEASE_STORE_PASSWORD
+          if ($LASTEXITCODE -ne 0) { throw "keytool failed to migrate the Android signing keystore (exit $LASTEXITCODE)" }
+          $aliases = & $keytool -list -keystore $keystore -storetype PKCS12 -storepass $env:ANDROID_RELEASE_STORE_PASSWORD
+          if ($LASTEXITCODE -ne 0) { throw "keytool could not read the migrated keystore" }
+          $aliases | Write-Output
+          if (-not ($aliases -match "operit2")) { throw "Migrated keystore does not contain alias operit2" }
           @"
           RELEASE_STORE_FILE=operit2-release.keystore
           RELEASE_STORE_PASSWORD=$env:ANDROID_RELEASE_STORE_PASSWORD
-          RELEASE_KEY_ALIAS=$env:ANDROID_RELEASE_KEY_ALIAS
+          RELEASE_KEY_ALIAS=operit2
           RELEASE_KEY_PASSWORD=$env:ANDROID_RELEASE_KEY_PASSWORD
           "@ | Set-Content -Path (Join-Path $secretsDir "android-signing.properties") -Encoding utf8
 
