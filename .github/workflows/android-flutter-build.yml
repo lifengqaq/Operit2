@@ -167,13 +167,11 @@ jobs:
             -cp $keytoolJar sun.security.tools.keytool.Main `
             -list -keystore $source -storepass $env:ANDROID_RELEASE_STORE_PASSWORD
           if ($LASTEXITCODE -ne 0) { throw "Could not read the Android signing keystore" }
-          # No -srcalias: -importkeystore copies every source entry and the
-          # -destalias rename applies to the single private key entry.
           & java --add-exports java.base/sun.security.tools.keytool=ALL-UNNAMED `
             -cp $keytoolJar sun.security.tools.keytool.Main `
             -importkeystore -noprompt -srckeystore $source `
             -srcstorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
-            -srckeypass $env:ANDROID_RELEASE_STORE_PASSWORD -destkeystore $keystore `
+            -srcalias eta -srckeypass $env:ANDROID_RELEASE_STORE_PASSWORD -destkeystore $keystore `
             -deststoretype PKCS12 -deststorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
             -destalias operit2 -destkeypass $env:ANDROID_RELEASE_STORE_PASSWORD
           if ($LASTEXITCODE -ne 0) { throw "keytool failed to migrate the Android signing keystore (exit $LASTEXITCODE)" }
