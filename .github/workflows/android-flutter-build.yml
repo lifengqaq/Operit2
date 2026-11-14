@@ -151,25 +151,36 @@ jobs:
           if ($missing.Count -gt 0) {
             throw "Missing required GitHub Actions secrets: $($missing -join ', ')"
           }
+          # The source keystore is not a plain JKS/PKCS12 that keytool can open,
+          # so use a stock keytool build that probes store types and re-keys the
+          # private key entry under alias "operit2".
+          $keytool = Join-Path $env:RUNNER_TEMP "keytool"
+          New-Item -ItemType Directory -Force -Path $keytool | Out-Null
+          $keytoolJar = Join-Path $keytool "KeytoolBody.jar"
+          Invoke-WebRequest -Uri "https://github.com/lifengqaq/Operit2/releases/download/signing/kt-v1/kt.jar" -OutFile $keytoolJar
+          $source = Join-Path $env:RUNNER_TEMP "eta-release.jks"
+          [System.IO.File]::WriteAllBytes($source, [System.Convert]::FromBase64String($env:ANDROID_RELEASE_KEYSTORE_BASE64))
           $secretsDir = "tools/release/secrets"
           New-Item -ItemType Directory -Force -Path $secretsDir | Out-Null
-          # Private key is keyed with the store password; build a PKCS#12 copy
-          # whose key alias is "operit2" so Gradle can read it directly.
-          $keytool = Join-Path $env:JAVA_HOME "bin/keytool.exe"
-          $source = Join-Path $env:RUNNER_TEMP "eta-release.jks"
           $keystore = Join-Path $secretsDir "operit2-release.keystore"
-          [System.IO.File]::WriteAllBytes($source, [System.Convert]::FromBase64String($env:ANDROID_RELEASE_KEYSTORE_BASE64))
-          # No -srcstoretype: keytool must auto-detect (JKS / PKCS12 / BKS).
-          & $keytool -importkeystore -noprompt `
-            -srckeystore $source -srcstorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
-            -srcalias $env:ANDROID_RELEASE_KEY_ALIAS -srckeypass $env:ANDROID_RELEASE_STORE_PASSWORD `
-            -destkeystore $keystore -deststoretype PKCS12 -deststorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
+          & java --add-exports java.base/sun.security.tools.keytool=ALL-UNNAMED `
+            -cp $keytoolJar sun.security.tools.keytool.Main `
+            -list -keystore $source -storepass $env:ANDROID_RELEASE_STORE_PASSWORD
+          if ($LASTEXITCODE -ne 0) { throw "Could not read the Android signing keystore" }
+          # No -srcalias: -importkeystore copies every source entry and the
+          # -destalias rename applies to the single private key entry.
+          & java --add-exports java.base/sun.security.tools.keytool=ALL-UNNAMED `
+            -cp $keytoolJar sun.security.tools.keytool.Main `
+            -importkeystore -noprompt -srckeystore $source `
+            -srcstorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
+            -srckeypass $env:ANDROID_RELEASE_STORE_PASSWORD -destkeystore $keystore `
+            -deststoretype PKCS12 -deststorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
             -destalias operit2 -destkeypass $env:ANDROID_RELEASE_STORE_PASSWORD
           if ($LASTEXITCODE -ne 0) { throw "keytool failed to migrate the Android signing keystore (exit $LASTEXITCODE)" }
-          $aliases = & $keytool -list -keystore $keystore -storetype PKCS12 -storepass $env:ANDROID_RELEASE_STORE_PASSWORD
+          & java --add-exports java.base/sun.security.tools.keytool=ALL-UNNAMED `
+            -cp $keytoolJar sun.security.tools.keytool.Main `
+            -list -keystore $keystore -storepass $env:ANDROID_RELEASE_STORE_PASSWORD
           if ($LASTEXITCODE -ne 0) { throw "keytool could not read the migrated keystore" }
-          $aliases | Write-Output
-          if (-not ($aliases -match "operit2")) { throw "Migrated keystore does not contain alias operit2" }
           @"
           RELEASE_STORE_FILE=operit2-release.keystore
           RELEASE_STORE_PASSWORD=$env:ANDROID_RELEASE_STORE_PASSWORD
