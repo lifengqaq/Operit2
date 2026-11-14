@@ -58,11 +58,10 @@ dependencies:
   # Uses the same native video backend for runtime asset data URIs on every OS.
   fvp: ^0.40.0
   path_provider: ^2.1.5
+  # Vendored from openharmony-sig/flutter_packages at 35fb467533e1: the CI
+  # runners cannot reach gitee.com, so the pinned tree lives in thirdparty/.
   path_provider_ohos:
-    git:
-      url: https://gitee.com/openharmony-sig/flutter_packages.git
-      ref: 35fb467533e174411a117b2a030c15d2a3a9687c
-      path: packages/path_provider/path_provider_ohos
+    path: ../thirdparty/path_provider_ohos
   path: ^1.9.1
   pub_semver: ^2.2.1
   record: ^6.2.1
@@ -75,11 +74,10 @@ dependencies:
   webview_all_windows: ^1.2.1
   url_launcher: ^6.3.2
   package_info_plus: ^10.2.2
+  # Vendored from openharmony-sig/flutter_packages at 35fb467533e1: the CI
+  # runners cannot reach gitee.com, so the pinned tree lives in thirdparty/.
   url_launcher_ohos:
-    git:
-      url: https://gitee.com/openharmony-sig/flutter_packages.git
-      ref: 35fb467533e174411a117b2a030c15d2a3a9687c
-      path: packages/url_launcher/url_launcher_ohos
+    path: ../thirdparty/url_launcher_ohos
   file_selector: ^1.1.0
   image_picker_android: ^0.8.13+17
   image_picker_ios:
