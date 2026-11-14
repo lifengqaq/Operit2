@@ -196,6 +196,16 @@ jobs:
         shell: pwsh
         run: python tools/build_scripts/check_build_environment.py --products app --github-runner
 
+      - name: Install plugin build toolchain
+        shell: pwsh
+        run: |
+          # The plugin sync step compiles ToolPkg sources and requires a
+          # repository-managed TypeScript compiler plus Corepack for pnpm.
+          npm install --prefix .ci-tools/typescript --no-audit --no-fund typescript@5.9.3
+          if ($LASTEXITCODE -ne 0) { throw "npm install typescript failed" }
+          & ".ci-tools/typescript/node_modules/.bin/tsc.cmd" --version
+          corepack --version
+
       - name: Build and package Android app
         shell: pwsh
         run: |
