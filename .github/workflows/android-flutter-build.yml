@@ -159,8 +159,9 @@ jobs:
           $source = Join-Path $env:RUNNER_TEMP "eta-release.jks"
           $keystore = Join-Path $secretsDir "operit2-release.keystore"
           [System.IO.File]::WriteAllBytes($source, [System.Convert]::FromBase64String($env:ANDROID_RELEASE_KEYSTORE_BASE64))
+          # No -srcstoretype: keytool must auto-detect (JKS / PKCS12 / BKS).
           & $keytool -importkeystore -noprompt `
-            -srckeystore $source -srcstoretype JKS -srcstorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
+            -srckeystore $source -srcstorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
             -srcalias $env:ANDROID_RELEASE_KEY_ALIAS -srckeypass $env:ANDROID_RELEASE_STORE_PASSWORD `
             -destkeystore $keystore -deststoretype PKCS12 -deststorepass $env:ANDROID_RELEASE_STORE_PASSWORD `
             -destalias operit2 -destkeypass $env:ANDROID_RELEASE_STORE_PASSWORD
