@@ -204,7 +204,12 @@ jobs:
           npm install --prefix .ci-tools/typescript --no-audit --no-fund typescript@5.9.3
           if ($LASTEXITCODE -ne 0) { throw "npm install typescript failed" }
           & ".ci-tools/typescript/node_modules/.bin/tsc.cmd" --version
-          corepack --version
+          # Plugin pack scripts call bare `pnpm` from inside `corepack pnpm run`,
+          # so a real pnpm binary has to exist on PATH.
+          npm install -g pnpm@10.7.0 --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "global pnpm install failed" }
+          pnpm --version
+          if ($LASTEXITCODE -ne 0) { throw "pnpm is not on PATH after install" }
 
       - name: Build and package Android app
         shell: pwsh
